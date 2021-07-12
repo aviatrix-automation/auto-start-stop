@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  StartupSchedule:
+    Default: cron(0 15 ? * MON-FRI *)
+    Description: This is a cron expression for when the startup Lambda function will be invoked. Times are specified in the UTC time zone. Defaults to "cron(0 15 ? * MON-FRI *)" which starts all instances Monday-Friday at 8AM PDT (15:00 UTC). For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions.
+    Type: String
+  ShutdownSchedule:
+    Default: cron(0 3 * * ? *)
+    Description: This is a cron expression for when the shutdown Lambda function will be invoked. Times are specified in the UTC time zone. Defaults to "cron(0 3 * * ? *)" which shuts down all instances at 8PM PDT (3:00 UTC) every night. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions.
+    Type: String
+
+Resources:
+
+  StartRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: StartEC2Rule
+      ScheduleExpression: !Ref StartupSchedule
+      Targets:
+        - Arn: !GetAtt StartLambda.Arn
+          Id: StartLambda
+
+  StopRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: StopEC2Rule
+      ScheduleExpression: !Ref ShutdownSchedule
+      Targets:
+        - Arn: !GetAtt StopLambda.Arn
+          Id: StopLambda
+
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: EC2Permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - ec2:DescribeInstances
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                Resource: "*"
+
+  StartLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.8
+      Role: !GetAtt IAMRole.Arn
+      Handler: index.lambda_handler
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import boto3
+
+          # Get list of regions
+          def get_regions():
+              ec2 = boto3.client("ec2", region_name="us-east-1")
+              response = ec2.describe_regions()
+              regions = response["Regions"]
+              list_of_regions = []
+              for region in regions:
+                  list_of_regions.append(region["RegionName"])
+              return list_of_regions
+
+          # Get list of running/stopped instances in a region
+          def get_instances(region, state):
+              ec2 = boto3.client("ec2", region_name=region)
+              response = ec2.describe_instances(
+                  Filters=[{"Name": "instance-state-name", "Values": [state]}]
+              )
+              instances = response["Reservations"]
+              list_of_instances = []
+              for instance in instances:
+                  list_of_instances.append(instance["Instances"][0]["InstanceId"])
+              return list_of_instances
+
+          # Start instances in all regions
+          def start_instances():
+              list_of_regions = get_regions()
+              for region in list_of_regions:
+                  ec2 = boto3.client("ec2", region_name=region)
+                  instances = get_instances(region, "stopped")
+                  if len(instances) == 0:
+                      print("No instances to start in", region)
+                  else:
+                      ec2.start_instances(InstanceIds=instances)
+                      print("Starting instances in", region, instances)
+
+          def lambda_handler(event, context):
+              start_instances()
+
+  StopLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.8
+      Role: !GetAtt IAMRole.Arn
+      Handler: index.lambda_handler
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import boto3
+
+          # Get list of regions
+          def get_regions():
+              ec2 = boto3.client("ec2", region_name="us-east-1")
+              response = ec2.describe_regions()
+              regions = response["Regions"]
+              list_of_regions = []
+              for region in regions:
+                  list_of_regions.append(region["RegionName"])
+              return list_of_regions
+
+          # Get list of running/stopped instances in a region
+          def get_instances(region, state):
+              ec2 = boto3.client("ec2", region_name=region)
+              response = ec2.describe_instances(
+                  Filters=[{"Name": "instance-state-name", "Values": [state]}]
+              )
+              instances = response["Reservations"]
+              list_of_instances = []
+              for instance in instances:
+                  list_of_instances.append(instance["Instances"][0]["InstanceId"])
+              return list_of_instances
+
+          # Stop instances in all regions
+          def stop_instances():
+              list_of_regions = get_regions()
+              for region in list_of_regions:
+                  ec2 = boto3.client("ec2", region_name=region)
+                  instances = get_instances(region, "running")
+                  if len(instances) == 0:
+                      print("No instances to stop in", region)
+                  else:
+                      ec2.stop_instances(InstanceIds=instances)
+                      print("Stopping instsances in", region, instances)
+
+          def lambda_handler(event, context):
+              stop_instances()
