@@ -5,6 +5,7 @@ Parameters:
     Default: cron(0 15 ? * MON-FRI *)
     Description: This is a cron expression for when the startup Lambda function will be invoked. Times are specified in the UTC time zone. Defaults to "cron(0 15 ? * MON-FRI *)" which starts all instances Monday-Friday at 8AM PDT (15:00 UTC). For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions.
     Type: String
+
   ShutdownSchedule:
     Default: cron(0 3 * * ? *)
     Description: This is a cron expression for when the shutdown Lambda function will be invoked. Times are specified in the UTC time zone. Defaults to "cron(0 3 * * ? *)" which shuts down all instances at 8PM PDT (3:00 UTC) every night. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions.
@@ -150,3 +151,19 @@ Resources:
 
           def lambda_handler(event, context):
               stop_instances()
+
+  EventsStartLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt StartLambda.Arn
+      Principal: events.amazonaws.com
+      SourceArn : !GetAtt StartRule.Arn
+
+  EventsStopLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt StopLambda.Arn
+      Principal: events.amazonaws.com
+      SourceArn : !GetAtt StopRule.Arn
