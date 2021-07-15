@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   StartupSchedule:
     Default: cron(0 15 ? * MON-FRI *)
-    Description: This is a cron expression for when the startup Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 15 ? * MON-FRI *)" which starts all instances Monday-Friday at 8AM PDT (15:00 UTC). For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. Autostart can be disabled by setting this parameter to DISABLE-AUTOSTART.
+    Description: This is a cron expression for when the startup Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 15 ? * MON-FRI *)" which starts all instances Monday-Friday at 8AM PDT (15:00 UTC). For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. Autostart can be disabled by leaving this field blank.
     Type: String
 
   ShutdownSchedule:
@@ -15,7 +15,7 @@ Conditions:
   StartupScheduleSet: !Not
     - !Equals
       - !Ref StartupSchedule
-      - DISABLE-AUTOSTART
+      - ""
 
 Resources:
   StartRule:
