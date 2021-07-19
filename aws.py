@@ -1,11 +1,11 @@
 import boto3
 
 # Only instances with this tag will be autostarted
-tag_include_autostart = {"Key": "CF-Auto-Start", "Value": "True"}
+tag_include_autostart = {"Key": "Auto-Start", "Value": "True"}
 
 
 # All instances will be autostopped unless it has this tag
-tag_exclude_autostop = {"Key": "CF-Auto-Stop", "Value": "False"}
+tag_exclude_autostop = {"Key": "Auto-Stop", "Value": "False"}
 
 
 # Get list of regions

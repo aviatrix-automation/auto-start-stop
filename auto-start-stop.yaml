@@ -3,12 +3,12 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   StartupSchedule:
     Default: cron(0 15 ? * MON-FRI *)
-    Description: This is a cron expression for when the startup Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 15 ? * MON-FRI *)" which is 8AM PDT (15:00 UTC) Monday through Friday. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. Only instances with tag key of "CF-Auto-Start" and tag value of "True" will be autostarted. Autostart can be disabled by leaving this field blank.
+    Description: This is a cron expression for when the startup Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 15 ? * MON-FRI *)" which is 8AM PDT (15:00 UTC) Monday through Friday. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. Only instances with tag key of "Auto-Start" and tag value of "True" will be autostarted. Autostart can be disabled by leaving this field blank.
     Type: String
 
   ShutdownSchedule:
     Default: cron(0 3 * * ? *)
-    Description: This is a cron expression for when the shutdown Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 3 * * ? *)" which is 8PM PDT (3:00 UTC) every night. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. All instances will be shut down unless they have a tag key of "CF-Auto-Stop" and tag value of "False".
+    Description: This is a cron expression for when the shutdown Lambda function will be triggered. Times are specified in UTC and defaults to "cron(0 3 * * ? *)" which is 8PM PDT (3:00 UTC) every night. For more information about cron expressions, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions. All instances will be shut down unless they have a tag key of "Auto-Stop" and tag value of "False".
     Type: String
 
 Conditions:
@@ -74,10 +74,10 @@ Resources:
           import boto3
 
           # Only instances with this tag will be autostarted
-          tag_include_autostart = {"Key": "CF-Auto-Start", "Value": "True"}
+          tag_include_autostart = {"Key": "Auto-Start", "Value": "True"}
 
           # All instances will be autostopped unless it has this tag
-          tag_exclude_autostop = {"Key": "CF-Auto-Stop", "Value": "False"}
+          tag_exclude_autostop = {"Key": "Auto-Stop", "Value": "False"}
 
           # Get list of regions
           def get_regions():
@@ -171,10 +171,10 @@ Resources:
           import boto3
 
           # Only instances with this tag will be autostarted
-          tag_include_autostart = {"Key": "CF-Auto-Start", "Value": "True"}
+          tag_include_autostart = {"Key": "Auto-Start", "Value": "True"}
 
           # All instances will be autostopped unless it has this tag
-          tag_exclude_autostop = {"Key": "CF-Auto-Stop", "Value": "False"}
+          tag_exclude_autostop = {"Key": "Auto-Stop", "Value": "False"}
 
           # Get list of regions
           def get_regions():
