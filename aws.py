@@ -1,5 +1,13 @@
 import boto3
 
+# Only instances with this tag will be autostarted
+tag_include_autostart = {"Key": "CF-Auto-Start", "Value": "True"}
+
+
+# All instances will be autostopped unless it has this tag
+tag_exclude_autostop = {"Key": "CF-Auto-Stop", "Value": "False"}
+
+
 # Get list of regions
 def get_regions():
     ec2 = boto3.client("ec2", region_name="us-east-1")
@@ -24,32 +32,67 @@ def get_instances(region, state):
     return list_of_instances
 
 
-# Stop instances in all regions
-def stop_instances():
-    list_of_regions = get_regions()
-    for region in list_of_regions:
-        ec2 = boto3.client("ec2", region_name=region)
-        instances = get_instances(region, "running")
-        if len(instances) == 0:
-            print("No instances to stop in", region)
-        else:
-            ec2.stop_instances(InstanceIds=instances)
-            print("Stopping instsances in", region, instances)
+# Filters a list of instances based on a tag and an action (include or exclude)
+# - include will return a list of instances that have this tag
+# - exclude will return a list of instances that do not have this tag
+def filter_list(instance_list, region, tag, action):
+    filtered_list = []
+    ec2 = boto3.client("ec2", region_name=region)
+    if action == "include":
+        for instance in instance_list:
+            response = ec2.describe_instances(
+                Filters=[{"Name": "instance-id", "Values": [instance]}]
+            )
+            if "Tags" in response["Reservations"][0]["Instances"][0]:
+                instance_tags = response["Reservations"][0]["Instances"][0]["Tags"]
+                if tag in instance_tags:
+                    filtered_list.append(instance)
+    if action == "exclude":
+        for instance in instance_list:
+            response = ec2.describe_instances(
+                Filters=[{"Name": "instance-id", "Values": [instance]}]
+            )
+            if "Tags" in response["Reservations"][0]["Instances"][0]:
+                instance_tags = response["Reservations"][0]["Instances"][0]["Tags"]
+                if tag not in instance_tags:
+                    filtered_list.append(instance)
+            else:
+                # Instance doesn't have tags so add it to the filtered list
+                filtered_list.append(instance)
+    return filtered_list
 
 
-# Start instances in all regions
+# Start instances in all regions that have the the tag_include_autostart tag
 def start_instances():
     list_of_regions = get_regions()
     for region in list_of_regions:
         ec2 = boto3.client("ec2", region_name=region)
         instances = get_instances(region, "stopped")
-        if len(instances) == 0:
+        filtered_list = filter_list(instances, region, tag_include_autostart, "include")
+        if len(filtered_list) == 0:
             print("No instances to start in", region)
         else:
-            ec2.start_instances(InstanceIds=instances)
-            print("Starting instances in", region, instances)
+            ec2.start_instances(InstanceIds=filtered_list)
+            print("Starting instances in", region, filtered_list)
+
+
+# Stop instances in all regions that don't have the tag_exclude_autostop tag
+def stop_instances():
+    list_of_regions = get_regions()
+    for region in list_of_regions:
+        ec2 = boto3.client("ec2", region_name=region)
+        instances = get_instances(region, "running")
+        filtered_list = filter_list(instances, region, tag_exclude_autostop, "exclude")
+        if len(filtered_list) == 0:
+            print("No instances to stop in", region)
+        else:
+            ec2.stop_instances(InstanceIds=filtered_list)
+            print("Stopping instances in", region, filtered_list)
 
 
 def lambda_handler(event, context):
-    #    stop_instances()
-    start_instances()
+    stop_instances()
+
+
+# stop_instances()
+start_instances()
